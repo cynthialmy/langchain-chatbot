@@ -1,4 +1,6 @@
-# co3054c6e9a97b8f6fb964b14
+# Scrimba Chatbot
+
+This is not a general knowledge chatbot. This bot can have logical, contextual conversations about a specific knowledge source that we provide it. In this case, it will be able to answer questions about Scrimba.
 
 Quick start:
 
