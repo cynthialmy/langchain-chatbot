@@ -3,6 +3,10 @@ import { PromptTemplate } from "langchain/prompts";
 import { StringOutputParser } from "langchain/schema/output_parser";
 import { retriever } from "./utils/retriever.js";
 import { combineDocuments } from "./utils/combineDocuments.js";
+import {
+	RunnablePassthrough,
+	RunnableSequence,
+} from "langchain/schema/runnable";
 
 document.addEventListener("submit", (e) => {
 	e.preventDefault();
@@ -29,12 +33,36 @@ answer:
 
 const answerPrompt = PromptTemplate.fromTemplate(answerTemplate);
 
-// Take the standaloneQuestionPrompt and PIPE the model
-const chain = standaloneQuestionPrompt
-	.pipe(llm) // get the standalone question
-	.pipe(new StringOutputParser()) // parse the output as a string
-	.pipe(retriever) // get the nearest answer from the vector store
-	.pipe(combineDocuments); // combine the documents into one string
+const standaloneQuestionChain = RunnableSequence.from([
+	standaloneQuestionPrompt,
+	llm,
+	new StringOutputParser(),
+]);
+
+const retrieverChain = RunnableSequence.from([
+	(prevResult) => prevResult.standalone_question, // to access the standalone question from the previous step
+	retriever,
+	combineDocuments,
+]);
+
+const answerChain = RunnableSequence.from([
+	answerPrompt,
+	llm,
+	new StringOutputParser(),
+]);
+
+const chain = RunnableSequence.from([
+	{
+		// context: retrieverChain,
+		standalone_question: standaloneQuestionChain,
+		original_input: new RunnablePassthrough(),
+	},
+	{
+		context: retrieverChain,
+		question: ({ original_input }) => original_input.question,
+	},
+	answerChain,
+]);
 
 // Await the response when you INVOKE the chain.
 // Remember to pass in a question.
