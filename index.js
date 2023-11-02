@@ -64,15 +64,6 @@ const chain = RunnableSequence.from([
 	answerChain,
 ]);
 
-// Await the response when you INVOKE the chain.
-// Remember to pass in a question.
-const response = await chain.invoke({
-	question:
-		"What are the technical requirements for running Scrimba? I only have a very old laptop which is not that powerful.",
-});
-
-console.log(response);
-
 async function progressConversation() {
 	const userInput = document.getElementById("user-input");
 	const chatbotConversation = document.getElementById(
@@ -87,11 +78,16 @@ async function progressConversation() {
 	chatbotConversation.appendChild(newHumanSpeechBubble);
 	newHumanSpeechBubble.textContent = question;
 	chatbotConversation.scrollTop = chatbotConversation.scrollHeight;
+	// Await the response when you INVOKE the chain.
+	// Remember to pass in a question.
+	const response = await chain.invoke({
+		question: question,
+	});
 
 	// add AI message
 	const newAiSpeechBubble = document.createElement("div");
 	newAiSpeechBubble.classList.add("speech", "speech-ai");
 	chatbotConversation.appendChild(newAiSpeechBubble);
-	newAiSpeechBubble.textContent = result;
+	newAiSpeechBubble.textContent = response;
 	chatbotConversation.scrollTop = chatbotConversation.scrollHeight;
 }
