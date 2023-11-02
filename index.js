@@ -1,17 +1,29 @@
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+document.addEventListener("submit", (e) => {
+	e.preventDefault();
+	progressConversation();
+});
 
-try {
-	const result = await fetch("scrimba-info.txt");
-	const text = await result.text();
+const openAIApiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
-	const splitter = new RecursiveCharacterTextSplitter({
-		chunkSize: 500, // default 1000
-		separators: ["\n\n", "\n", " ", ""], // default setting
-		chunkOverlap: 50, // default 200
-	});
+async function progressConversation() {
+	const userInput = document.getElementById("user-input");
+	const chatbotConversation = document.getElementById(
+		"chatbot-conversation-container"
+	);
+	const question = userInput.value;
+	userInput.value = "";
 
-	const output = await splitter.createDocuments([text]);
-	console.log(output);
-} catch (err) {
-	console.log(err);
+	// add human message
+	const newHumanSpeechBubble = document.createElement("div");
+	newHumanSpeechBubble.classList.add("speech", "speech-human");
+	chatbotConversation.appendChild(newHumanSpeechBubble);
+	newHumanSpeechBubble.textContent = question;
+	chatbotConversation.scrollTop = chatbotConversation.scrollHeight;
+
+	// add AI message
+	const newAiSpeechBubble = document.createElement("div");
+	newAiSpeechBubble.classList.add("speech", "speech-ai");
+	chatbotConversation.appendChild(newAiSpeechBubble);
+	newAiSpeechBubble.textContent = result;
+	chatbotConversation.scrollTop = chatbotConversation.scrollHeight;
 }
