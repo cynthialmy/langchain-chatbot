@@ -1,9 +1,8 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { PromptTemplate } from "langchain/prompts";
-import { SupabaseVectorStore } from "langchain/vectorstores/supabase";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { createClient } from "@supabase/supabase-js";
 import { StringOutputParser } from "langchain/schema/output_parser";
+import { retriever } from "./utils/retriever.js";
+import { combineDocuments } from "./utils/combineDocuments.js";
 
 document.addEventListener("submit", (e) => {
 	e.preventDefault();
@@ -11,20 +10,6 @@ document.addEventListener("submit", (e) => {
 });
 
 const openAIApiKey = import.meta.env.VITE_OPENAI_API_KEY;
-const sbApiKey = import.meta.env.VITE_SUPABASE_API_KEY;
-const sbUrl = import.meta.env.VITE_SUPABASE_URL_LC_CHATBOT;
-
-const embeddings = new OpenAIEmbeddings({ openAIApiKey });
-const client = createClient(sbUrl, sbApiKey);
-
-const vectorStore = new SupabaseVectorStore(embeddings, {
-	client,
-	tableName: "documents",
-	queryName: "match_documents",
-});
-
-const retriever = vectorStore.asRetriever();
-
 const llm = new ChatOpenAI({ openAIApiKey });
 
 // A string holding the phrasing of the prompt
@@ -36,17 +21,26 @@ const standaloneQuestionPrompt = PromptTemplate.fromTemplate(
 	standaloneQuestionTemplate
 );
 
+const answerTemplate = `You are a helpful and enthusiastic support bot who can answer a given question about Scrimba based on the context provided. Try to find the answer in the context. If you really don't know the answer, say "I'm sorry, I don't know the answer to that." And direct the questioner to email help@scrimba.com. Don't try to make up an answer. Always speak as if you were chatting to a friend.
+context: {context}
+question: {question}
+answer:
+`;
+
+const answerPrompt = PromptTemplate.fromTemplate(answerTemplate);
+
 // Take the standaloneQuestionPrompt and PIPE the model
-const standaloneQuestionChain = standaloneQuestionPrompt
+const chain = standaloneQuestionPrompt
 	.pipe(llm) // get the standalone question
 	.pipe(new StringOutputParser()) // parse the output as a string
-	.pipe(retriever); // get the nearest answer from the vector store
+	.pipe(retriever) // get the nearest answer from the vector store
+	.pipe(combineDocuments); // combine the documents into one string
 
 // Await the response when you INVOKE the chain.
 // Remember to pass in a question.
-const response = await standaloneQuestionChain.invoke({
+const response = await chain.invoke({
 	question:
-		"The following is a paragraph about the history of the United States. The United States of America (USA), commonly known as the United States (U.S. or US), or America, is a country primarily located in North America, consisting of 50 states, a federal district, five major self-governing territories, and various possessions. At 3.8 million square miles (9.8 million square kilometers), it is the world's third- or fourth-largest country by total area. With a population of over 328 million, it is the third most populous country in the world. Give me some data about the demographics of these cities. The national capital is Washington, D.C., and the most populous city is New York City.",
+		"What are the technical requirements for running Scrimba? I only have a very old laptop which is not that powerful.",
 });
 
 console.log(response);
