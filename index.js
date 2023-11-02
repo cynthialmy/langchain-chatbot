@@ -7,6 +7,7 @@ import {
 	RunnablePassthrough,
 	RunnableSequence,
 } from "langchain/schema/runnable";
+import { formatConvHistory } from "./utils/formatConvHistory.js";
 
 document.addEventListener("submit", (e) => {
 	e.preventDefault();
@@ -17,16 +18,23 @@ const openAIApiKey = import.meta.env.VITE_OPENAI_API_KEY;
 const llm = new ChatOpenAI({ openAIApiKey });
 
 // A string holding the phrasing of the prompt
-const standaloneQuestionTemplate =
-	"Given a question, convert it to a standalone question. question: {question} standalone question:";
+const standaloneQuestionTemplate = `Given a question and also the conversation history (conv_history), 
+	convert it to a standalone question. 
+	question: {question} 
+	conv_history: {conv_history}
+	standalone question:
+	`;
 
 // A prompt created using PromptTemplate and the fromTemplate method
 const standaloneQuestionPrompt = PromptTemplate.fromTemplate(
 	standaloneQuestionTemplate
 );
 
-const answerTemplate = `You are a helpful and enthusiastic support bot who can answer a given question about Scrimba based on the context provided. Try to find the answer in the context. If you really don't know the answer, say "I'm sorry, I don't know the answer to that." And direct the questioner to email help@scrimba.com. Don't try to make up an answer. Always speak as if you were chatting to a friend.
+const answerTemplate = `You are a helpful and enthusiastic support bot who can answer a given question about Scrimba based on the context provided. 
+Try to find the answer in the context and also the conversation history (conv_history). If you really don't know the answer, say "I'm sorry, I don't know the answer to that." 
+And direct the questioner to email help@scrimba.com. Don't try to make up an answer. Always speak as if you were chatting to a friend.
 context: {context}
+conv_history: {conv_history}
 question: {question}
 answer:
 `;
@@ -53,16 +61,18 @@ const answerChain = RunnableSequence.from([
 
 const chain = RunnableSequence.from([
 	{
-		// context: retrieverChain,
 		standalone_question: standaloneQuestionChain,
 		original_input: new RunnablePassthrough(),
 	},
 	{
 		context: retrieverChain,
 		question: ({ original_input }) => original_input.question,
+		conv_history: ({ original_input }) => original_input.conv_history,
 	},
 	answerChain,
 ]);
+
+const convHistory = [];
 
 async function progressConversation() {
 	const userInput = document.getElementById("user-input");
@@ -82,7 +92,10 @@ async function progressConversation() {
 	// Remember to pass in a question.
 	const response = await chain.invoke({
 		question: question,
+		conv_history: formatConvHistory(convHistory),
 	});
+	convHistory.push(question);
+	convHistory.push(response);
 
 	// add AI message
 	const newAiSpeechBubble = document.createElement("div");
